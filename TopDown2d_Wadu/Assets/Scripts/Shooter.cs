@@ -1,8 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
+using Unity.Netcode;
 
-public class Shooter : MonoBehaviour
+public class Shooter : NetworkBehaviour
 {
     public GameObject bulletPrefeb;
     //单独设置个muzzle，直接绑定到抢上的话发射点会在原本锚点那儿
@@ -15,10 +17,14 @@ public class Shooter : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (!IsOwner) return;
+        if (Input.GetMouseButtonDown(0) && nexttime <= Time.time)
         {
-            Fire();
+            //Fire(); 这是没网络同步的发射
+            RequestFirstServerRpc();
             //will add firerate later
+            //nexttime += fireRate; 这样会屯时间 实现连发
+            nexttime = Time.time + fireRate;
         }
     }
 
@@ -45,5 +51,33 @@ public class Shooter : MonoBehaviour
         //我们要删除的是子弹本身，而不是他的rb组件
         Destroy(bullet, 2f);
 
+    }
+
+    //目前客户端看到的子弹是粘滞在原地的
+    [ServerRpc]
+    void RequestFirstServerRpc()
+    {
+        if (bulletPrefeb == null) return;
+
+        //在server实例化子弹
+        GameObject bullet = Instantiate(
+            bulletPrefeb,
+            firePoint.position,
+            firePoint.rotation
+            );
+        
+        //给速度
+        Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
+        if( rb != null )
+        {
+            rb.velocity = firePoint.up * bulletSpeed;
+        }
+
+        //获取网络组件，让服务器生成的子弹在其他地方也spawn
+        bullet.GetComponent<NetworkObject>().Spawn();
+
+
+        //摧毁
+        Destroy(bullet, 2f);
     }
 }

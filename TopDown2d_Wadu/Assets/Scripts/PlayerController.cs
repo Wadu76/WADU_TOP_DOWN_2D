@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : NetworkBehaviour
 {
     public float moveSpeed = 5f; //设为public方便在编辑器里调整
 
@@ -20,6 +21,8 @@ public class PlayerController : MonoBehaviour
     //Update 专门用来读取输入，保证操作灵敏且视觉流畅
     void Update()
     {
+        //如果这个角色不是我（本地玩家）控制的，就不要读取输入
+        if (!IsOwner) return;
         //处理键盘移动输入
         moveInput.x = Input.GetAxisRaw("Horizontal");
         moveInput.y = Input.GetAxisRaw("Vertical");
@@ -38,12 +41,28 @@ public class PlayerController : MonoBehaviour
 
         //让物体的Y轴(绿色箭头/上方) 对准这个方向
         transform.up = lookDir;
+
+        //Camera.main.transform.position = new Vector3(transform.position.x, transform.position.y, -10f);
+
+
     }
 
     //FixedUpdate 专门用来处理物理引擎，防止穿墙和抖动
     void FixedUpdate()
     {
+        //同样的若不是本人就不移动
+        if (!IsOwner) return;
         //移动刚体
         rb.velocity = moveInput * moveSpeed;
+        //Camera.main.transform.position = new Vector3(transform.position.x, transform.position.y, -10f);
+
+    }
+
+    private void LateUpdate()
+    {
+        if (!IsOwner) return;
+        //摄像头固定到本角色上 保持z轴为 -10，否则摄像机会钻到地图里去变黑
+        Camera.main.transform.position = new Vector3(transform.position.x, transform.position.y, -10f);
+        
     }
 }
