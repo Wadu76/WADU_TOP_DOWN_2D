@@ -21,13 +21,40 @@ public class Shooter : NetworkBehaviour
         if (Input.GetMouseButtonDown(0) && nexttime <= Time.time)
         {
             //Fire(); 这是没网络同步的发射
-            RequestFirstServerRpc();
+            //本地立刻生成“假”子弹，延迟补偿
+            SpawnVisualBullet();
+            //服务器算伤害
+            RequestFireServerRpc();
             //will add firerate later
             //nexttime += fireRate; 这样会屯时间 实现连发
             nexttime = Time.time + fireRate;
         }
     }
 
+    //虚拟子弹生成
+    void SpawnVisualBullet()
+    {
+        if (bulletPrefeb == null) return;
+
+        //实例化一个真子弹 后面我们给设置成假的
+        GameObject bullet = Instantiate(bulletPrefeb, firePoint.position, firePoint.rotation);
+
+        //关闭预测子弹的碰撞体，防止客户端自己触发伤害逻辑
+        /*Collider2D col = bullet.GetComponent<Collider2D>();
+        if(col != null)
+        {
+            col.enabled = false;
+        }*/
+
+        Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
+        if(rb != null)
+        {
+            rb.velocity = firePoint.up * bulletSpeed;
+        }
+
+        //2s后直接destroy 因为不是网络组件了可以直接销毁
+        Destroy(bullet, 2f);
+    }
     //开火函数，每一发子弹都通过该函数产生与删除
     void Fire()
     {
@@ -53,7 +80,7 @@ public class Shooter : NetworkBehaviour
 
     }
 
-    //目前客户端看到的子弹是粘滞在原地的
+    /*/目前客户端看到的子弹是粘滞在原地的
     [ServerRpc]
     void RequestFirstServerRpc()
     {
@@ -79,5 +106,43 @@ public class Shooter : NetworkBehaviour
 
         //摧毁
         Destroy(bullet, 2f);
+    }*/
+
+
+    [ServerRpc]
+    void RequestFireServerRpc(ServerRpcParams rpcParams = default)
+    {
+        //服务器生成“逻辑”子弹（负责OnTriggerEnter2D算伤害）
+        GameObject logicBullet = Instantiate(bulletPrefeb, firePoint.position, firePoint.rotation);
+
+        //服务器不需要看子弹画面，关闭图片渲染，让它隐形
+        SpriteRenderer sr = logicBullet.GetComponent<SpriteRenderer>();
+        if (sr != null) sr.enabled = false;
+
+        BulletVisual bv = logicBullet.GetComponent<BulletVisual>();
+        if (bv != null) bv.enabled = false;
+
+        //关掉逻辑子弹上的视觉脚本，只让它算伤害，不让它爆火花 防止与BulletVisual的冲突
+        Rigidbody2D rb = logicBullet.GetComponent<Rigidbody2D>();
+        if (rb != null) rb.velocity = firePoint.up * bulletSpeed;
+
+        Destroy(logicBullet, 2f);
+
+        //通知所有客户端：有人开枪了！
+        //把开火者的ClientId 传过去
+        BroadcastFireClientRpc(rpcParams.Receive.SenderClientId);
+    }
+
+    
+    //广播给所有客户端执行
+    [ClientRpc]
+    void BroadcastFireClientRpc(ulong senderId)
+    {
+        //防重复 如果是开火者本人，直接跳过！
+        //因为Update里已经生成过0延迟的预测子弹了，如果不跳过，他会看到射出两发子弹。
+        if (NetworkManager.Singleton.LocalClientId == senderId) return;
+
+        //其他玩家看到发射者开枪的视觉表现
+        SpawnVisualBullet();
     }
 }

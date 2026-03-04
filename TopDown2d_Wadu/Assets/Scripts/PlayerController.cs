@@ -22,7 +22,11 @@ public class PlayerController : NetworkBehaviour
     void Update()
     {
         //如果这个角色不是我（本地玩家）控制的，就不要读取输入
-        if (!IsOwner) return;
+        //如果没有本地权限，或者玩家已经死了，直接跳过不执行任何操作
+        
+        if (!IsOwner || GetComponent<Health>().isDead.Value)
+            return; //死人在说话...
+
         //处理键盘移动输入
         moveInput.x = Input.GetAxisRaw("Horizontal");
         moveInput.y = Input.GetAxisRaw("Vertical");
