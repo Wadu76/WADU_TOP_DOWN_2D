@@ -126,12 +126,29 @@ public class Health : NetworkBehaviour
         yield return new WaitForSeconds(3f); //挂机等3秒
 
         //随机找个坐标复活 (X: -5到5, Y: -5到5)
-        transform.position = new Vector3(Random.Range(-5f, 5f), Random.Range(-5f, 5f), 0);
+        //transform.position = new Vector3(Random.Range(-5f, 5f), Random.Range(-5f, 5f), 0);
+        Vector3 randomSpawnPos = new Vector3(Random.Range(-5f, 5f), Random.Range(-5f, 5f), 0);
+
+        ClientRpcParams clientRpcParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams
+            {
+                TargetClientIds = new ulong[] { OwnerClientId }
+            }
+        };
+        TeleportPlayerClientRpc(randomSpawnPos, clientRpcParams);
 
         currentHealth.Value = maxHealth; //满血
         isDead.Value = false; //宣布复活，模型重新显示！
     }
 
+    //专门让客户端自己瞬移的方法
+    [ClientRpc]
+    private void TeleportPlayerClientRpc(Vector3 newPos, ClientRpcParams clientRpcParams = default)
+    {
+        // 客户端接到命令，乖乖把自己移过去
+        transform.position = newPos;
+    }
 }
 
     

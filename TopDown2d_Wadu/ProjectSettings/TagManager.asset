@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 2
   tags:
   - Bullet
+  - Wall
   layers:
   - Default
   - TransparentFX
@@ -42,6 +43,15 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
-  - name: 1
+  - name: Ground
     uniqueID: 114367811
+    locked: 0
+  - name: Default(Player)
+    uniqueID: 1189157407
+    locked: 0
+  - name: ForeGround
+    uniqueID: 3162612249
+    locked: 0
+  - name: OverFore
+    uniqueID: 1340692399
     locked: 0

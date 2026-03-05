@@ -18,6 +18,8 @@ public class Shooter : NetworkBehaviour
     void Update()
     {
         if (!IsOwner) return;
+        //死了不能开枪
+        if (GetComponent<Health>().isDead.Value) return;
         if (Input.GetMouseButtonDown(0) && nexttime <= Time.time)
         {
             //Fire(); 这是没网络同步的发射
@@ -46,6 +48,8 @@ public class Shooter : NetworkBehaviour
             col.enabled = false;
         }*/
 
+        //这样它能正常撞墙爆火花，但Health脚本看到它不是"Bullet就不扣血了
+        bullet.tag = "Untagged";
         Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
         if(rb != null)
         {
@@ -120,7 +124,8 @@ public class Shooter : NetworkBehaviour
         if (sr != null) sr.enabled = false;
 
         BulletVisual bv = logicBullet.GetComponent<BulletVisual>();
-        if (bv != null) bv.enabled = false;
+        if (bv != null) bv.isLogicBullet = true;
+        //bv.enabled = false; 不需要再直接关闭BulletVisaul脚本，直接标记为逻辑子弹：不爆火花，撞墙自动摧毁
 
         //关掉逻辑子弹上的视觉脚本，只让它算伤害，不让它爆火花 防止与BulletVisual的冲突
         Rigidbody2D rb = logicBullet.GetComponent<Rigidbody2D>();
