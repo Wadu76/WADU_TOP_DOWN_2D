@@ -19,7 +19,9 @@ public class Shooter : NetworkBehaviour
     {
         if (!IsOwner) return;
         //死了不能开枪
-        if (GetComponent<Health>().isDead.Value) return;
+        //加上游戏结束不能开枪
+        //先看有没有ScoreManager 不然空指了
+        if (GetComponent<Health>().isDead.Value || (ScoreManager.Instance != null && ScoreManager.Instance.Isgameover)) return;
         if (Input.GetMouseButtonDown(0) && nexttime <= Time.time)
         {
             //Fire(); 这是没网络同步的发射
@@ -124,8 +126,17 @@ public class Shooter : NetworkBehaviour
         if (sr != null) sr.enabled = false;
 
         BulletVisual bv = logicBullet.GetComponent<BulletVisual>();
-        if (bv != null) bv.isLogicBullet = true;
+        if (bv != null)
+        {
+            bv.isLogicBullet = true;
+
+            bv.shooterId = rpcParams.Receive.SenderClientId;
+        } 
+            
         //bv.enabled = false; 不需要再直接关闭BulletVisaul脚本，直接标记为逻辑子弹：不爆火花，撞墙自动摧毁
+
+        
+
 
         //关掉逻辑子弹上的视觉脚本，只让它算伤害，不让它爆火花 防止与BulletVisual的冲突
         Rigidbody2D rb = logicBullet.GetComponent<Rigidbody2D>();

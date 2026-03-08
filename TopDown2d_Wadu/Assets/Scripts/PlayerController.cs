@@ -1,7 +1,8 @@
+using Cinemachine;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using Unity.Netcode;
+using UnityEngine;
 
 public class PlayerController : NetworkBehaviour
 {
@@ -11,11 +12,27 @@ public class PlayerController : NetworkBehaviour
     private Camera mainCamera;
     private Vector2 moveInput; //储存移动输入
     private Vector2 mousePos;  //储存鼠标的世界坐标
+    private CinemachineVirtualCamera vcam;  //存虚拟cam
 
+    public override void OnNetworkSpawn()
+    {
+        //如果这个角色是我（本地玩家），就去把摄像机抢过来
+        if (IsOwner)
+        {
+            //找到场景里的虚拟摄像机
+            CinemachineVirtualCamera vcam = FindObjectOfType<CinemachineVirtualCamera>();
+            if (vcam != null)
+            {
+                //让摄像机跟随我的坐标
+                vcam.Follow = transform;
+            }
+        }
+    }
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        mainCamera = Camera.main;
+        //不这样找了，容易找个空，切换场景依旧找的是老maincamera
+        //mainCamera = Camera.main;
     }
 
     //Update 专门用来读取输入，保证操作灵敏且视觉流畅
@@ -23,21 +40,45 @@ public class PlayerController : NetworkBehaviour
     {
         //如果这个角色不是我（本地玩家）控制的，就不要读取输入
         //如果没有本地权限，或者玩家已经死了，直接跳过不执行任何操作
-        
-        if (!IsOwner || GetComponent<Health>().isDead.Value)
+        //加上游戏是否结束的判断
+        //先看ScoreManager存在不 不然menu启动此处会空指
+        if (!IsOwner || GetComponent<Health>().isDead.Value || (ScoreManager.Instance != null && ScoreManager.Instance.Isgameover))
             return; //死人在说话...
+
+
+        //切换场景的摄像头懒加载
+        //如果主摄像机丢了（刚切完场景，就在新场景里重新找
+        if (mainCamera == null)
+        {
+            mainCamera = Camera.main;
+            if (mainCamera == null) return; //如果新场景还没加载完，就先等一帧
+        }
+
+        //如果虚拟摄像机还没绑定，就主动去绑定
+        if (vcam == null)
+        {
+            vcam = FindObjectOfType<CinemachineVirtualCamera>();
+            if (vcam != null)
+            {
+                vcam.Follow = transform; //抢过新场景摄像机的跟随权
+            }
+        }
+
 
         //处理键盘移动输入
         moveInput.x = Input.GetAxisRaw("Horizontal");
         moveInput.y = Input.GetAxisRaw("Vertical");
         moveInput = moveInput.normalized; // 归一化防止斜走变快
 
-        // 2. 处理鼠标位置转换
+        //处理鼠标位置转换
         // 把鼠标在屏幕上的像素坐标 转为游戏世界坐标
         Vector3 screenPos = Input.mousePosition;
-        // 关键点：屏幕坐标是2D的，我们需要告诉摄像机这个物体离镜头有多远
-        screenPos.z = Mathf.Abs(mainCamera.transform.position.z);
-        mousePos = mainCamera.ScreenToWorldPoint(screenPos);
+        //屏幕坐标是2D的，我们需要告诉摄像机这个物体离镜头有多远
+        //要判断camera在不在，不然切换场景会空
+        
+            screenPos.z = Mathf.Abs(mainCamera.transform.position.z);
+            mousePos = mainCamera.ScreenToWorldPoint(screenPos);
+     
 
         //处理旋转 (放在Update里看着更丝滑)
         //向量减法：目标点 - 当前点 = 指向目标的向量
@@ -64,9 +105,8 @@ public class PlayerController : NetworkBehaviour
 
     private void LateUpdate()
     {
-        if (!IsOwner) return;
+        //if (!IsOwner) return;
         //摄像头固定到本角色上 保持z轴为 -10，否则摄像机会钻到地图里去变黑
-        Camera.main.transform.position = new Vector3(transform.position.x, transform.position.y, -10f);
-        
+        //Camera.main.transform.position = new Vector3(transform.position.x, transform.position.y, -10f);
     }
 }

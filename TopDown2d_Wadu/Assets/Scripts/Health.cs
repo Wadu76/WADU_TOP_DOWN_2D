@@ -1,7 +1,7 @@
-using UnityEngine;
-using Unity.Netcode;
-using UnityEngine.UI;   //for image
 using System.Collections; //for 协程 (Coroutine) 倒计时
+using Unity.Netcode;
+using UnityEngine;
+using UnityEngine.UI;   //for image
 
 public class Health : NetworkBehaviour
 {
@@ -36,36 +36,12 @@ public class Health : NetworkBehaviour
         currentHealth.OnValueChanged -= OnHealthChanged;
     }
 
+    /*byebye we'll putting u in takedamage
     //只有服务器能触发碰撞逻辑
     //因为子弹开了IsTrigger，所以这里用OnTriggerEnter2D
     private void OnTriggerEnter2D(Collider2D other)
-    {
-        //如果不是服务器，不仅不扣血，连判断都不判断，直接退出 且如果4了就也退出
-        if (!IsServer || isDead.Value) return;
-
-        //检查撞到的东西是不是子弹
-        if (other.CompareTag("Bullet"))
-        {
-            //在扣血前，立刻关闭子弹的碰撞体
-            //这样即使Destroy要等到帧末才执行，这个子弹在本帧内也变成了“实体幻影”，无法再次触发伤害了。 这样就不会一个子弹二次触发了
-            //other.enabled = false;依旧不行
-            if (Time.time - lastDamageTime < 0.05f) return;
-            //如果成功造成了伤害，马上刷新“最后一次受伤的时间”
-            lastDamageTime = Time.time;
-            //扣血 (修改Value会自动同步给所有客户端)
-            currentHealth.Value -= 10;
-
-            //销毁子弹 (必须用 NetworkObject的 Despawn)
-            //哪怕子弹在客户端还没飞到，服务器说它没了，它就得没
-            /*NetworkObject netObj = other.GetComponent<NetworkObject>();
-            if (netObj != null)
-            {
-                netObj.Despawn();
-            }*/
-            // no more 网络组件 直接摧毁！
-            Destroy(other.gameObject);
-        }
-    }
+   {
+    }*/
 
     //当血量变化时执行 (客户端和服务器都会执行这个)
     // previousValue: 变化前的值, newValue: 变化后的值
@@ -82,7 +58,7 @@ public class Health : NetworkBehaviour
             //简单演示：把人藏起来 (不要 Destroy，否则连接会断)
             //gameObject.SetActive(false); // 暂时不建议直接关，可能会导致网络不同步，先看Log
 
-            StartCoroutine(RespawnRoutine());
+            //StartCoroutine(RespawnRoutine());
         }
     }
     //这是一个专门用来更新血条UI的新方法，扣血/出生时候用
@@ -148,6 +124,32 @@ public class Health : NetworkBehaviour
     {
         // 客户端接到命令，乖乖把自己移过去
         transform.position = newPos;
+    }
+
+    //处理扣血的方法 只在服务器运行
+    public void TakeDamage(int damage, ulong shooterId)
+    {
+        //是不是服务器 || 活着吗 （服务器权限与死亡拦截）
+        if (!IsServer || isDead.Value) return;
+
+        //无敌帧（每次受击要有微小间隔防止子弹二次判定）
+        if (Time.time - lastDamageTime < 0.05f) return;
+        lastDamageTime = Time.time;
+
+        //直接扣血
+        currentHealth.Value -= damage;
+
+        if (currentHealth.Value <= 0)
+        {
+            //死亡逻辑
+            // 此时不仅知道自己死了 (OwnerClientId)，还知道是谁杀的 (shooterId)
+
+            //通知全局计分板：击杀者 杀了 被杀者
+            ScoreManager.Instance.RegisterKill(shooterId, OwnerClientId);
+
+            //复活协程
+            StartCoroutine(RespawnRoutine());
+        }
     }
 }
 
