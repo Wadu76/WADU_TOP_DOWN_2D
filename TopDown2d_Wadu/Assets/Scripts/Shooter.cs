@@ -19,9 +19,16 @@ public class Shooter : NetworkBehaviour
     {
         if (!IsOwner) return;
         //死了不能开枪
+        if (GetComponent<Health>().isDead.Value) return;
         //加上游戏结束不能开枪
+        if (ScoreManager.Instance != null && ScoreManager.Instance.Isgameover) return;
         //先看有没有ScoreManager 不然空指了
-        if (GetComponent<Health>().isDead.Value || (ScoreManager.Instance != null && ScoreManager.Instance.Isgameover)) return;
+
+        //再看有没有打开esc界面 同样看有没有pausemenu
+        if (PauseMenu.Instance != null && PauseMenu.Instance.IsPaused) return;
+        //if (GetComponent<Health>().isDead.Value || (ScoreManager.Instance != null && ScoreManager.Instance.Isgameover || 
+        //  (PauseMenu.Instance != null && !(PauseMenu.Instance.isActive)))) return;
+
         if (Input.GetMouseButtonDown(0) && nexttime <= Time.time)
         {
             //Fire(); 这是没网络同步的发射

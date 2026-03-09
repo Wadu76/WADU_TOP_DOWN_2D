@@ -147,7 +147,7 @@ public class ScoreManager : NetworkBehaviour
                 }
                 else//没获胜方看到的
                 {
-                    winnerText.text = $"GameOver!\nWinner: Player {winnerId}";
+                    winnerText.text = $"GameOver!{winnerId} Won";
                     winnerText.color = Color.red;
                 }
             }
