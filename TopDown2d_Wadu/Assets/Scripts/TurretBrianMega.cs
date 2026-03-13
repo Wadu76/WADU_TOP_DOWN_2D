@@ -3,29 +3,44 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AI;
 
-public class TurretBrian : NetworkBehaviour
+//可移动ai脚本
+public class TurretBrianMega : NetworkBehaviour
 {
     [Header("炮塔组件")]
     public Transform turretHead; //TurretHead
     public Transform firePoint;  //枪口
 
     [Header("参数")]
-    public float attackRange = 8f;     //索敌半径
+    public float attackRange = 10f;     //索敌半径 （可移动的大点 让ai远处就跑过来
     public float rotationSpeed = 5f;   //炮头旋转速度
     public float fireRate = 1.5f;      //开火间隔
+
+    [Header("寻路组件")]
+    public NavMeshAgent agent; // 拖入挂在身上的NavMesh Agent
 
     [Header("子弹")]
     public GameObject bulletPrefab;
 
     [Header("AI_Bullet_Speed")]
-    public float bulletSpeed = 10f; // 必须和AIBullet实际速度一致 和玩家的一样（shooter脚本里
+    public float bulletSpeed = 10f; //必须和AIBullet实际速度一致 和玩家的一样（shooter脚本里
 
     //目前要瞄准的target（玩家
     private Transform currentTarget;
     private float nextFireTime;
 
-  
+    private void Start()
+    {
+        //Unity的NavMesh默认是3D的，
+        //强制关闭3D旋转， 适配2D
+        if (agent != null)
+        {
+            agent.updateRotation = false;
+            agent.updateUpAxis = false;
+        }
+    }
+
 
     // Update is called once per frame
     void Update()
@@ -41,15 +56,27 @@ public class TurretBrian : NetworkBehaviour
 
         if (currentTarget != null)
         {
+
+            //寻路移动逻辑
+            //只要有了目标，就让Agent自动算出一条避开障碍物的路
+            agent.SetDestination(currentTarget.position);
+
             //瞄准玩家
             AimAtTarget();
 
-            //如果冷却好了，就开火
-            if (Time.time >= nextFireTime)
+            //距离够近才开火，和索敌距离不一样。索敌距离内就开始追击
+            float distance = Vector2.Distance(transform.position, currentTarget.position);
+            if (distance <= attackRange && Time.time >= nextFireTime)
             {
                 Fire();
                 nextFireTime = Time.time + fireRate;
             }
+          
+        }
+        else
+        {
+            //如果没找到玩家，就原地停下
+            agent.ResetPath();
         }
     }
 

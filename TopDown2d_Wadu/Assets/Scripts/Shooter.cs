@@ -42,13 +42,13 @@ public class Shooter : NetworkBehaviour
         }
     }
 
-    //虚拟子弹生成
+    //客户端本地生成视觉子弹（带特效，没有伤害
+    //现在改成从子弹池子里借 不再单独生成
     void SpawnVisualBullet()
     {
         if (bulletPrefeb == null) return;
 
-        //实例化一个真子弹 后面我们给设置成假的
-        GameObject bullet = Instantiate(bulletPrefeb, firePoint.position, firePoint.rotation);
+        GameObject bullet = ObjectPoolManager.Instance.GetBullet(firePoint.position, firePoint.rotation);
 
         //关闭预测子弹的碰撞体，防止客户端自己触发伤害逻辑
         /*Collider2D col = bullet.GetComponent<Collider2D>();
@@ -65,103 +65,75 @@ public class Shooter : NetworkBehaviour
             rb.velocity = firePoint.up * bulletSpeed;
         }
 
+
+        //设置为视觉子弹
+        BulletVisual bv = bullet.GetComponent<BulletVisual>();
+        if (bv != null)
+        {
+            bv.isLogicBullet = false;
+        }
+
         //2s后直接destroy 因为不是网络组件了可以直接销毁
-        Destroy(bullet, 2f);
+        //Destroy(bullet, 2f);
     }
-    //开火函数，每一发子弹都通过该函数产生与删除
-    void Fire()
-    {
-        if (bulletPrefeb == null)
-        {
-            Debug.LogError("Prefeb未赋值");
-        }
-
-        //实例化子弹
-        GameObject bullet = Instantiate(
-            bulletPrefeb,
-            firePoint.position,
-            firePoint.rotation      //朝向和发射点一致
-            );
-
-        Rigidbody2D bullet2D = bullet.GetComponent<Rigidbody2D>();
-
-        //子弹速度 向量*子弹速度
-        bullet2D.velocity = firePoint.up * bulletSpeed;
-
-        //我们要删除的是子弹本身，而不是他的rb组件
-        Destroy(bullet, 2f);
-
-    }
-
-    /*/目前客户端看到的子弹是粘滞在原地的
-    [ServerRpc]
-    void RequestFirstServerRpc()
-    {
-        if (bulletPrefeb == null) return;
-
-        //在server实例化子弹
-        GameObject bullet = Instantiate(
-            bulletPrefeb,
-            firePoint.position,
-            firePoint.rotation
-            );
-        
-        //给速度
-        Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
-        if( rb != null )
-        {
-            rb.velocity = firePoint.up * bulletSpeed;
-        }
-
-        //获取网络组件，让服务器生成的子弹在其他地方也spawn
-        bullet.GetComponent<NetworkObject>().Spawn();
-
-
-        //摧毁
-        Destroy(bullet, 2f);
-    }*/
+    
 
 
     [ServerRpc]
     void RequestFireServerRpc(ServerRpcParams rpcParams = default)
     {
-        //服务器生成“逻辑”子弹（负责OnTriggerEnter2D算伤害）
-        GameObject logicBullet = Instantiate(bulletPrefeb, firePoint.position, firePoint.rotation);
+
+        GameObject bullet = ObjectPoolManager.Instance.GetBullet(firePoint.position, firePoint.rotation);
 
         //服务器不需要看子弹画面，关闭图片渲染，让它隐形
-        SpriteRenderer sr = logicBullet.GetComponent<SpriteRenderer>();
-        if (sr != null) sr.enabled = false;
+        //SpriteRenderer sr = logicBullet.GetComponent<SpriteRenderer>();
+        //if (sr != null) sr.enabled = false;
 
-        BulletVisual bv = logicBullet.GetComponent<BulletVisual>();
+        Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
+        rb.velocity = firePoint.up * bulletSpeed;
+
+        BulletVisual bv = bullet.GetComponent<BulletVisual>();
         if (bv != null)
         {
             bv.isLogicBullet = true;
 
             bv.shooterId = rpcParams.Receive.SenderClientId;
-        } 
-            
-        //bv.enabled = false; 不需要再直接关闭BulletVisaul脚本，直接标记为逻辑子弹：不爆火花，撞墙自动摧毁
+        }
 
-        
+
+        //bv.enabled = false; 不需要再直接关闭BulletVisaul脚本，直接标记为逻辑子弹：不爆火花，撞墙自动摧毁
 
 
         //关掉逻辑子弹上的视觉脚本，只让它算伤害，不让它爆火花 防止与BulletVisual的冲突
-        Rigidbody2D rb = logicBullet.GetComponent<Rigidbody2D>();
-        if (rb != null) rb.velocity = firePoint.up * bulletSpeed;
+        //Rigidbody2D rb = logicBullet.GetComponent<Rigidbody2D>();
+        //if (rb != null) rb.velocity = firePoint.up * bulletSpeed;
 
-        Destroy(logicBullet, 2f);
+        //不能destroy了，已经从池子借了此处destroy就没意义了，最后会导致池子空
+        //Destroy(bullet, 2f);
 
+        //启动2s后回收子弹的协程
+        StartCoroutine(ReturnBulletDelay(bullet, 2f));
         //通知所有客户端：有人开枪了！
         //把开火者的ClientId 传过去
-        BroadcastFireClientRpc(rpcParams.Receive.SenderClientId);
+        //BroadcastFireClientRpc(rpcParams.Receive.SenderClientId);
     }
 
-    
-    //广播给所有客户端执行
-    [ClientRpc]
+    //子弹2s后还给池子
+    //System.Collections.IEnumerator协程的强制返回类型
+    private System.Collections.IEnumerator ReturnBulletDelay(GameObject bullet, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        //如果2秒后这颗子弹还在激活状态（没撞墙），就把它还给池子
+        if (bullet.activeInHierarchy)
+        {
+            ObjectPoolManager.Instance.ReturnBullet(bullet);
+        }
+    }
+        //广播给所有客户端执行
+        [ClientRpc]
     void BroadcastFireClientRpc(ulong senderId)
     {
-        //防重复 如果是开火者本人，直接跳过！
+        //防重复 如果是开火者本人，直接跳过
         //因为Update里已经生成过0延迟的预测子弹了，如果不跳过，他会看到射出两发子弹。
         if (NetworkManager.Singleton.LocalClientId == senderId) return;
 
