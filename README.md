@@ -46,3 +46,6 @@
    ```bash
    git clone https://github.com/Wadu76/WADU_TOP_DOWN_2D.git
    ```
+
+## 快速下载 | Download
+- Windows 64位版本：[WADU_TOP_DOWN_2D_v1.0_Win64.zip](https://github.com/Wadu76/WADU_TOP_DOWN_2D/releases/download/v1.0/WADU_TOP_DOWN_2D_v1.0_Win64.zip)
