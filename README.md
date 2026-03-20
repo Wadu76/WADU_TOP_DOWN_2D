@@ -48,4 +48,4 @@
    ```
 
 ## 快速下载 | Download
-- Windows 64位版本：[WADU_TOP_DOWN_2D_v1.0_Win64.zip]([https://github.com/Wadu76/WADU_TOP_DOWN_2D/releases/download/v1.0/WADU_TOP_DOWN_2D_v1.0_Win64.zip](https://github.com/Wadu76/WADU_TOP_DOWN_2D/releases/tag/v1.0.0))
+- Windows 64位版本：[Watod_demo1.0.zip (v1.0.0)](https://github.com/Wadu76/WADU_TOP_DOWN_2D/releases/download/v1.0.0/Watod_demo1.0.zip)
