@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Bullet
   - Wall
+  - AI
   layers:
   - Default
   - TransparentFX

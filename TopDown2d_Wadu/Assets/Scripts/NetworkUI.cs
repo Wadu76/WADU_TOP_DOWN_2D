@@ -12,7 +12,7 @@ public class NetworkUI : MonoBehaviour
 
     void Start()
     {
-        hostBtn.onClick.AddListener(() => {
+       /*hostBtn.onClick.AddListener(() => {
             //作为房主启动
             NetworkManager.Singleton.StartHost();
             //房主带着所有人到GameScene
@@ -28,6 +28,7 @@ public class NetworkUI : MonoBehaviour
             NetworkManager.Singleton.StartClient();
             //HideUI();
         });
+       */
     }
 
     void HideUI()

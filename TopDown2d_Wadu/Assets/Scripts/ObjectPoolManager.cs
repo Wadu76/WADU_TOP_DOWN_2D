@@ -7,11 +7,15 @@ public class ObjectPoolManager : MonoBehaviour
     public static ObjectPoolManager Instance;
 
     [Header("Pool Setting")]
-    public GameObject bulletPrefab;
-    public int poolSize = 30;
+    public GameObject playerbulletPrefab;
+    public GameObject ai_bulletPrefab;//要单独弄ai的子弹池，否则ai调用的也是普通子弹池里的子弹（也会是黄色的）
+    public int poolSize = 5;
+    
 
     //用队列维护池子 近也方便 出也方便
-    private Queue<GameObject> bulletPool = new Queue<GameObject>();
+    private Queue<GameObject> playerbulletPool = new Queue<GameObject>();
+    //第二个队列 AI的子弹队列（AI对手用的子弹和玩家不一样，所以要维护两个池子）
+    private Queue<GameObject> aibulletPool = new Queue<GameObject>();
 
     private void Awake()
     {
@@ -28,37 +32,47 @@ public class ObjectPoolManager : MonoBehaviour
 
     private void InitializePool()
     {
+
         for (int i = 0; i < poolSize; i++)
         {
-            CreateNewBullet();
+            // player's bullet
+            CreateNewBullet(false);
+            // ai's bullet
+            CreateNewBullet(true);
         }
     }
 
     
     //制造新子弹函数
-    private void CreateNewBullet()
+    private void CreateNewBullet(bool isAI)
     {
+        //根据isAI bool 值判断是玩家/ai的子弹并创造对应的子弹
+        GameObject prefab = isAI ? ai_bulletPrefab : playerbulletPrefab;
         //初始化一个
-        GameObject bullet = Instantiate(bulletPrefab);
+        GameObject bullet = Instantiate(prefab);
         //先关闭不显示
         bullet.SetActive(false);
         //设置到我们挂在的物体下面，防止hierarchy子弹看着乱
         bullet.transform.SetParent(transform);
         //造好后入队
-        bulletPool.Enqueue(bullet);
+        if (isAI) aibulletPool.Enqueue(bullet);
+        else playerbulletPool.Enqueue(bullet);
     }
 
     //借子弹
-    public GameObject GetBullet(Vector2 position, Quaternion rotation)
+    public GameObject GetBullet(bool isAI, Vector2 position, Quaternion rotation)
     {
+        //先选对应池子
+        Queue<GameObject> targetPool = isAI ? aibulletPool : playerbulletPool;
+
         //借之前池子里起码得有子弹吧
-        if (bulletPool.Count == 0)
+        if (targetPool.Count == 0)
         {
-            CreateNewBullet();
+            CreateNewBullet(isAI);
         }
 
         //要用 出队
-        GameObject bullet = bulletPool.Dequeue();
+        GameObject bullet = targetPool.Dequeue();
 
         //
         bullet.transform.position = position;
@@ -70,11 +84,13 @@ public class ObjectPoolManager : MonoBehaviour
     }
 
     //还子弹回池子
-    public void ReturnBullet(GameObject bullet)
+    public void ReturnBullet(bool isAI , GameObject bullet)
     {
         //先关闭
         bullet.SetActive(false);
         //再入池子
-        bulletPool.Enqueue(bullet);
+        //bulletPool.Enqueue(bullet);
+        if (isAI) aibulletPool.Enqueue(bullet);
+        else playerbulletPool.Enqueue(bullet);
     }
 }

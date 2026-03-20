@@ -14,7 +14,7 @@ public class BulletLogic : MonoBehaviour
         // 只有服务器有权处理伤害逻辑
         if (!Unity.Netcode.NetworkManager.Singleton.IsServer) return;
 
-        if (other.CompareTag("Player"))
+        if (other.CompareTag("Player") || other.CompareTag("AI"))
         {
             Health health = other.GetComponent<Health>();
             if (health != null)

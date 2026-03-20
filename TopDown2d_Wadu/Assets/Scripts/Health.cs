@@ -1,107 +1,124 @@
-using System.Collections; //for Ğ­³Ì (Coroutine) µ¹¼ÆÊ±
+ï»¿using System.Collections; //for åç¨‹ (Coroutine) å€’è®¡æ—¶
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;   //for image
 
 public class Health : NetworkBehaviour
 {
-    //¶¨ÒåÍøÂç±äÁ¿
-    //ReadPermission.Everyone: ËùÓĞÈË¶¼ÄÜ¿´µ½ÑªÁ¿£¨ÎªÒÔºó×öÑªÌõUI×¼±¸£©
-    //WritePermission.Server: Ö»ÓĞ·şÎñÆ÷ÓĞÈ¨ĞŞ¸ÄÑªÁ¿£¨·À×÷±×£©
+    //å®šä¹‰ç½‘ç»œå˜é‡
+    //ReadPermission.Everyone: æ‰€æœ‰äººéƒ½èƒ½çœ‹åˆ°è¡€é‡ï¼ˆä¸ºä»¥ååšè¡€æ¡UIå‡†å¤‡ï¼‰
+    //WritePermission.Server: åªæœ‰æœåŠ¡å™¨æœ‰æƒä¿®æ”¹è¡€é‡ï¼ˆé˜²ä½œå¼Šï¼‰
     public NetworkVariable<int> currentHealth = new NetworkVariable<int>(
         100,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server
     );
-    //Í¬²½Íæ¼ÒµÄ¡°ÉúËÀ×´Ì¬¡±
+    //åŒæ­¥ç©å®¶çš„â€œç”Ÿæ­»çŠ¶æ€â€
     public NetworkVariable<bool> isDead = new NetworkVariable<bool>(
         false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     public int maxHealth = 100;
-    public Image healthBarFill; //»¬¶¯ÑªÌõ
-    //ÉÏ´ÎÊÜÉËÊ±¼ä
+    public Image healthBarFill; //æ»‘åŠ¨è¡€æ¡
+    //ä¸Šæ¬¡å—ä¼¤æ—¶é—´
     private float lastDamageTime = 0f;
-    //³õÊ¼»¯£º¼àÌıÑªÁ¿±ä»¯
+    //åˆå§‹åŒ–ï¼šç›‘å¬è¡€é‡å˜åŒ–
     public override void OnNetworkSpawn()
     {
-        //µ±currentHealthÊıÖµ·¢Éú±ä»¯Ê±£¬Ö´ĞĞOnHealthChanged
+        //å½“currentHealthæ•°å€¼å‘ç”Ÿå˜åŒ–æ—¶ï¼Œæ‰§è¡ŒOnHealthChanged
         currentHealth.OnValueChanged += OnHealthChanged;
-        isDead.OnValueChanged += OnDeathStateChanged; //¼àÌıÉúËÀ±ä»¯
+        isDead.OnValueChanged += OnDeathStateChanged; //ç›‘å¬ç”Ÿæ­»å˜åŒ–
         UpdateHealthUI(currentHealth.Value);
     }
 
-    //ÇåÀí£ºÈ¡Ïû¼àÌı
+    //æ¸…ç†ï¼šå–æ¶ˆç›‘å¬
     public override void OnNetworkDespawn()
     {
         currentHealth.OnValueChanged -= OnHealthChanged;
     }
 
     /*byebye we'll putting u in takedamage
-    //Ö»ÓĞ·şÎñÆ÷ÄÜ´¥·¢Åö×²Âß¼­
-    //ÒòÎª×Óµ¯¿ªÁËIsTrigger£¬ËùÒÔÕâÀïÓÃOnTriggerEnter2D
+    //åªæœ‰æœåŠ¡å™¨èƒ½è§¦å‘ç¢°æ’é€»è¾‘
+    //å› ä¸ºå­å¼¹å¼€äº†IsTriggerï¼Œæ‰€ä»¥è¿™é‡Œç”¨OnTriggerEnter2D
     private void OnTriggerEnter2D(Collider2D other)
    {
     }*/
 
-    //µ±ÑªÁ¿±ä»¯Ê±Ö´ĞĞ (¿Í»§¶ËºÍ·şÎñÆ÷¶¼»áÖ´ĞĞÕâ¸ö)
-    // previousValue: ±ä»¯Ç°µÄÖµ, newValue: ±ä»¯ºóµÄÖµ
+    //å½“è¡€é‡å˜åŒ–æ—¶æ‰§è¡Œ (å®¢æˆ·ç«¯å’ŒæœåŠ¡å™¨éƒ½ä¼šæ‰§è¡Œè¿™ä¸ª)
+    // previousValue: å˜åŒ–å‰çš„å€¼, newValue: å˜åŒ–åçš„å€¼
     private void OnHealthChanged(int previousValue, int newValue)
     {
         UpdateHealthUI(newValue);
-        Debug.Log($"Íæ¼Ò {OwnerClientId} ÑªÁ¿: {newValue}");
+        //è·å–æ­»è€…çš„ç½‘ç»œ ID
+        ulong victimId = NetworkObject.OwnerClientId;
 
-        //Èç¹ûÑªÁ¿¹éÁã£¬ÇÒÎÒÊÇ·şÎñÆ÷£¬ÇÒÄ¿Ç°»¹Ã»ËÀ£¬¾ÍÖ´ĞĞËÀÍöÂß¼­
+        // âœ… æ ¸å¿ƒä¿®æ”¹ï¼šå¦‚æœæ˜¯ AI æ­»äº†ï¼Œå¼ºè¡ŒæŠŠ victimId è®°ä½œ 999
+        if (gameObject.CompareTag("AI"))
+        {
+            victimId = 999;
+        }
+        Debug.Log($"ç©å®¶ {victimId} è¡€é‡: {newValue}");
+
+        //å¦‚æœè¡€é‡å½’é›¶ï¼Œä¸”æˆ‘æ˜¯æœåŠ¡å™¨ï¼Œä¸”ç›®å‰è¿˜æ²¡æ­»ï¼Œå°±æ‰§è¡Œæ­»äº¡é€»è¾‘
         if (newValue <= 0 && IsServer && !isDead.Value)
         {
-            Debug.Log($"Íæ¼Ò {OwnerClientId} ¹ÒÁË£¡");
-            //ÕâÀïÒÔºó¿ÉÒÔĞ´£º²¥·ÅËÀÍö¶¯»­¡¢ÖØÉú¡¢»òÕß¹Ø±Õ¿ØÖÆ
-            //¼òµ¥ÑİÊ¾£º°ÑÈË²ØÆğÀ´ (²»Òª Destroy£¬·ñÔòÁ¬½Ó»á¶Ï)
-            //gameObject.SetActive(false); // ÔİÊ±²»½¨ÒéÖ±½Ó¹Ø£¬¿ÉÄÜ»áµ¼ÖÂÍøÂç²»Í¬²½£¬ÏÈ¿´Log
+            Debug.Log($"ç©å®¶ {victimId} æŒ‚äº†ï¼");
+            //è¿™é‡Œä»¥åå¯ä»¥å†™ï¼šæ’­æ”¾æ­»äº¡åŠ¨ç”»ã€é‡ç”Ÿã€æˆ–è€…å…³é—­æ§åˆ¶
+            //ç®€å•æ¼”ç¤ºï¼šæŠŠäººè—èµ·æ¥ (ä¸è¦ Destroyï¼Œå¦åˆ™è¿æ¥ä¼šæ–­)
+            //gameObject.SetActive(false); // æš‚æ—¶ä¸å»ºè®®ç›´æ¥å…³ï¼Œå¯èƒ½ä¼šå¯¼è‡´ç½‘ç»œä¸åŒæ­¥ï¼Œå…ˆçœ‹Log
 
             //StartCoroutine(RespawnRoutine());
         }
     }
-    //ÕâÊÇÒ»¸ö×¨ÃÅÓÃÀ´¸üĞÂÑªÌõUIµÄĞÂ·½·¨£¬¿ÛÑª/³öÉúÊ±ºòÓÃ
+    //è¿™æ˜¯ä¸€ä¸ªä¸“é—¨ç”¨æ¥æ›´æ–°è¡€æ¡UIçš„æ–°æ–¹æ³•ï¼Œæ‰£è¡€/å‡ºç”Ÿæ—¶å€™ç”¨
     private void UpdateHealthUI(int health)
     {
         if (healthBarFill != null)
         {
-            // fillAmount ±ØĞëÊÇ 0 µ½ 1 Ö®¼äµÄĞ¡Êı
-            // °Ñ int ×ª³É float ÔÙÏà³ı£¬¾ÍÄÜµÃµ½±ÈÈç 80/100 = 0.8
+            // fillAmount å¿…é¡»æ˜¯ 0 åˆ° 1 ä¹‹é—´çš„å°æ•°
+            // æŠŠ int è½¬æˆ float å†ç›¸é™¤ï¼Œå°±èƒ½å¾—åˆ°æ¯”å¦‚ 80/100 = 0.8
             healthBarFill.fillAmount = (float)health / maxHealth;
         }
     }
 
-    //ºËĞÄËÀÍö±íÏÖÂß¼­£¨ËùÓĞ¿Í»§¶Ë¶¼»áÖ´ĞĞ£©
+    //æ ¸å¿ƒæ­»äº¡è¡¨ç°é€»è¾‘ï¼ˆæ‰€æœ‰å®¢æˆ·ç«¯éƒ½ä¼šæ‰§è¡Œï¼‰
     private void OnDeathStateChanged(bool oldState, bool newState)
     {
-        // newState Îª true ±íÊ¾ËÀÁË£¬false ±íÊ¾»î×Å
+        // newState ä¸º true è¡¨ç¤ºæ­»äº†ï¼Œfalse è¡¨ç¤ºæ´»ç€
 
-        //¿ªÆô/¹Ø±ÕËùÓĞ¿É¼ûµÄÍ¼Æ¬£¨±¾ÌåµÄÔ²È¦ºÍÇ¹£©
+        //å¼€å¯/å…³é—­æ‰€æœ‰å¯è§çš„å›¾ç‰‡ï¼ˆæœ¬ä½“çš„åœ†åœˆå’Œæªï¼‰
         foreach (var sr in GetComponentsInChildren<SpriteRenderer>())
         {
             sr.enabled = !newState;
         }
 
-        //¿ªÆô/¹Ø±ÕÅö×²Ìå£¨·ÀÖ¹±ŞÊ¬ºÍµ²×Óµ¯£©
+        //å¼€å¯/å…³é—­ç¢°æ’ä½“ï¼ˆé˜²æ­¢é­å°¸å’ŒæŒ¡å­å¼¹ï¼‰
         GetComponent<Collider2D>().enabled = !newState;
 
-        //Òş²Ø/ÏÔÊ¾ÑªÌõµÄ¸¸¼¶Canvas
+        //éšè—/æ˜¾ç¤ºè¡€æ¡çš„çˆ¶çº§Canvas
         if (healthBarFill != null)
         {
             healthBarFill.transform.parent.gameObject.SetActive(!newState);
         }
     }
 
-    //Ö»ÔÚ·şÎñÆ÷ÔËĞĞµÄ¸´»îµ¹¼ÆÊ±Æ÷
+    //åªåœ¨æœåŠ¡å™¨è¿è¡Œçš„å¤æ´»å€’è®¡æ—¶å™¨
     private IEnumerator RespawnRoutine()
     {
-        isDead.Value = true; //Ğû²¼ËÀÍö£¬´¥·¢ÉÏÃæµÄÒş²ØÂß¼­
+        isDead.Value = true; //å®£å¸ƒæ­»äº¡ï¼Œè§¦å‘ä¸Šé¢çš„éšè—é€»è¾‘
 
-        Debug.Log($"Íæ¼Ò {OwnerClientId} ËÀÍö£¬3Ãëºó¸´»î...");
-        yield return new WaitForSeconds(3f); //¹Ò»úµÈ3Ãë
+        //è·å–æ­»è€…çš„ç½‘ç»œ ID
+        ulong victimId = NetworkObject.OwnerClientId;
 
-        //Ëæ»úÕÒ¸ö×ø±ê¸´»î (X: -5µ½5, Y: -5µ½5)
+        //å¦‚æœæ˜¯AIï¼Œå¼ºè¡ŒæŠŠvictimId è®°ä½œ999
+        if (gameObject.CompareTag("AI"))
+        {
+            victimId = 999;
+        }
+     
+        Debug.Log($"ç©å®¶ {victimId} æ­»äº¡ï¼Œ3ç§’åå¤æ´»...");
+        yield return new WaitForSeconds(3f); //æŒ‚æœºç­‰3ç§’
+
+        //éšæœºæ‰¾ä¸ªåæ ‡å¤æ´» (X: -5åˆ°5, Y: -5åˆ°5)
         //transform.position = new Vector3(Random.Range(-5f, 5f), Random.Range(-5f, 5f), 0);
         Vector3 randomSpawnPos = new Vector3(Random.Range(-5f, 5f), Random.Range(-5f, 5f), 0);
 
@@ -109,45 +126,52 @@ public class Health : NetworkBehaviour
         {
             Send = new ClientRpcSendParams
             {
-                TargetClientIds = new ulong[] { OwnerClientId }
+                TargetClientIds = new ulong[] { victimId }
             }
         };
         TeleportPlayerClientRpc(randomSpawnPos, clientRpcParams);
 
-        currentHealth.Value = maxHealth; //ÂúÑª
-        isDead.Value = false; //Ğû²¼¸´»î£¬Ä£ĞÍÖØĞÂÏÔÊ¾£¡
+        currentHealth.Value = maxHealth; //æ»¡è¡€
+        isDead.Value = false; //å®£å¸ƒå¤æ´»ï¼Œæ¨¡å‹é‡æ–°æ˜¾ç¤ºï¼
     }
 
-    //×¨ÃÅÈÃ¿Í»§¶Ë×Ô¼ºË²ÒÆµÄ·½·¨
+    //ä¸“é—¨è®©å®¢æˆ·ç«¯è‡ªå·±ç¬ç§»çš„æ–¹æ³•
     [ClientRpc]
     private void TeleportPlayerClientRpc(Vector3 newPos, ClientRpcParams clientRpcParams = default)
     {
-        // ¿Í»§¶Ë½Óµ½ÃüÁî£¬¹Ô¹Ô°Ñ×Ô¼ºÒÆ¹ıÈ¥
+        // å®¢æˆ·ç«¯æ¥åˆ°å‘½ä»¤ï¼Œä¹–ä¹–æŠŠè‡ªå·±ç§»è¿‡å»
         transform.position = newPos;
     }
 
-    //´¦Àí¿ÛÑªµÄ·½·¨ Ö»ÔÚ·şÎñÆ÷ÔËĞĞ
+    //å¤„ç†æ‰£è¡€çš„æ–¹æ³• åªåœ¨æœåŠ¡å™¨è¿è¡Œ
     public void TakeDamage(int damage, ulong shooterId)
     {
-        //ÊÇ²»ÊÇ·şÎñÆ÷ || »î×ÅÂğ £¨·şÎñÆ÷È¨ÏŞÓëËÀÍöÀ¹½Ø£©
+        //æ˜¯ä¸æ˜¯æœåŠ¡å™¨ || æ´»ç€å— ï¼ˆæœåŠ¡å™¨æƒé™ä¸æ­»äº¡æ‹¦æˆªï¼‰
         if (!IsServer || isDead.Value) return;
 
-        //ÎŞµĞÖ¡£¨Ã¿´ÎÊÜ»÷ÒªÓĞÎ¢Ğ¡¼ä¸ô·ÀÖ¹×Óµ¯¶ş´ÎÅĞ¶¨£©
+        //æ— æ•Œå¸§ï¼ˆæ¯æ¬¡å—å‡»è¦æœ‰å¾®å°é—´éš”é˜²æ­¢å­å¼¹äºŒæ¬¡åˆ¤å®šï¼‰
         if (Time.time - lastDamageTime < 0.05f) return;
         lastDamageTime = Time.time;
 
-        //Ö±½Ó¿ÛÑª
+        //ç›´æ¥æ‰£è¡€
         currentHealth.Value -= damage;
 
         if (currentHealth.Value <= 0)
         {
-            //ËÀÍöÂß¼­
-            // ´ËÊ±²»½öÖªµÀ×Ô¼ºËÀÁË (OwnerClientId)£¬»¹ÖªµÀÊÇË­É±µÄ (shooterId)
+            //æ­»äº¡é€»è¾‘
+            // æ­¤æ—¶ä¸ä»…çŸ¥é“è‡ªå·±æ­»äº† (OwnerClientId)ï¼Œè¿˜çŸ¥é“æ˜¯è°æ€çš„ (shooterId)
 
-            //Í¨ÖªÈ«¾Ö¼Æ·Ö°å£º»÷É±Õß É±ÁË ±»É±Õß
-            ScoreManager.Instance.RegisterKill(shooterId, OwnerClientId);
+            //é€šçŸ¥å…¨å±€è®¡åˆ†æ¿ï¼šå‡»æ€è€… æ€äº† è¢«æ€è€…
+            ulong victimId = NetworkObject.OwnerClientId;
 
-            //¸´»îĞ­³Ì
+            //å¦‚æœæ˜¯AI ï¼Œå¼ºè¡ŒæŠŠvictimIdè®°ä½œ 999
+            if (gameObject.CompareTag("AI"))
+            {
+                victimId = 999;
+            }
+            ScoreManager.Instance.RegisterKill(shooterId, victimId);
+
+            //å¤æ´»åç¨‹
             StartCoroutine(RespawnRoutine());
         }
     }

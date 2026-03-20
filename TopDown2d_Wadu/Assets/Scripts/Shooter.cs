@@ -48,7 +48,8 @@ public class Shooter : NetworkBehaviour
     {
         if (bulletPrefeb == null) return;
 
-        GameObject bullet = ObjectPoolManager.Instance.GetBullet(firePoint.position, firePoint.rotation);
+        //添加第一个参数 isAI，此处都是玩家子弹，所以直接设置为false
+        GameObject bullet = ObjectPoolManager.Instance.GetBullet(false, firePoint.position, firePoint.rotation);
 
         //关闭预测子弹的碰撞体，防止客户端自己触发伤害逻辑
         /*Collider2D col = bullet.GetComponent<Collider2D>();
@@ -58,7 +59,8 @@ public class Shooter : NetworkBehaviour
         }*/
 
         //这样它能正常撞墙爆火花，但Health脚本看到它不是"Bullet就不扣血了
-        bullet.tag = "Untagged";
+        //bullet.tag = "Untagged";完全多余，该逻辑已经改成islogicbullet的布尔值判断了
+        //如果上面这样改tag就会污染池子里的子弹
         Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
         if(rb != null)
         {
@@ -75,6 +77,8 @@ public class Shooter : NetworkBehaviour
 
         //2s后直接destroy 因为不是网络组件了可以直接销毁
         //Destroy(bullet, 2f);
+        //现在子弹回收都在bulletvisual里面了，所以这里就不回收了
+        //玩家只用管扣扳机，子弹要考虑的就很多了（自己回收自己）
     }
     
 
@@ -82,8 +86,8 @@ public class Shooter : NetworkBehaviour
     [ServerRpc]
     void RequestFireServerRpc(ServerRpcParams rpcParams = default)
     {
-
-        GameObject bullet = ObjectPoolManager.Instance.GetBullet(firePoint.position, firePoint.rotation);
+        //都是玩家子弹
+        GameObject bullet = ObjectPoolManager.Instance.GetBullet(false, firePoint.position, firePoint.rotation);
 
         //服务器不需要看子弹画面，关闭图片渲染，让它隐形
         //SpriteRenderer sr = logicBullet.GetComponent<SpriteRenderer>();
@@ -112,23 +116,29 @@ public class Shooter : NetworkBehaviour
         //Destroy(bullet, 2f);
 
         //启动2s后回收子弹的协程
-        StartCoroutine(ReturnBulletDelay(bullet, 2f));
+        //StartCoroutine(ReturnBulletDelay(bullet, 2f));
         //通知所有客户端：有人开枪了！
         //把开火者的ClientId 传过去
-        //BroadcastFireClientRpc(rpcParams.Receive.SenderClientId);
+        //没有这个客户端就看不到主机端的子弹了
+        BroadcastFireClientRpc(rpcParams.Receive.SenderClientId);
     }
 
+
+    //关闭此处协程，我们直接在子弹射出的时候就给其计时2f，后面收回
     //子弹2s后还给池子
     //System.Collections.IEnumerator协程的强制返回类型
+    /*
     private System.Collections.IEnumerator ReturnBulletDelay(GameObject bullet, float delay)
     {
         yield return new WaitForSeconds(delay);
         //如果2秒后这颗子弹还在激活状态（没撞墙），就把它还给池子
+        //目前撞墙依旧是destroy 打到墙上回因为子弹没了此处直接报错
         if (bullet.activeInHierarchy)
         {
             ObjectPoolManager.Instance.ReturnBullet(bullet);
         }
     }
+    */
         //广播给所有客户端执行
         [ClientRpc]
     void BroadcastFireClientRpc(ulong senderId)

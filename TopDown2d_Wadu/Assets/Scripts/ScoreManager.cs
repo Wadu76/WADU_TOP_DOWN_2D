@@ -11,6 +11,7 @@ public class ScoreManager : NetworkBehaviour
     public static ScoreManager Instance;
     [Header("UI")]
     //public Text scoreboardText;
+    public GameObject scoreboardPanel;
     public TextMeshProUGUI scoreboardText;
 
     [Header("GameOver Settings")]
@@ -38,7 +39,8 @@ public class ScoreManager : NetworkBehaviour
        if(scoreboardText != null)
         {
             //按着tab setactive参数就为 1=true 反之为false
-            scoreboardText.gameObject.SetActive(Input.GetKey(KeyCode.Tab));
+            //scoreboardText.gameObject.SetActive(Input.GetKey(KeyCode.Tab));
+            scoreboardPanel.SetActive(Input.GetKey(KeyCode.Tab));
         }
     }
 
@@ -92,8 +94,8 @@ public class ScoreManager : NetworkBehaviour
 
     private void RefreshScoreboard()
     {
-        string boardText = "rank\n";
-        boardText += "--------\n";
+        string boardText = "<color=#FFD700>\tPlayer   \t\tKills   \t\tDeaths</color>\n";
+        //boardText += "--------------------------------------------------\n";
 
         //收集所有参与过击杀或死亡的玩家ID
         List<ulong> allPlayers = new List<ulong>();
@@ -109,7 +111,8 @@ public class ScoreManager : NetworkBehaviour
             //死亡表同理
             int d = deathsDict.ContainsKey(id) ? deathsDict[id] : 0;
 
-            boardText += $"Player{id} | K:{k} | D:{d}\n";
+            //给击杀数标红，给死亡数标灰
+            boardText += $"\tPlayer {id}\t\t<color=red>{k}</color>\t\t<color=grey>{d}</color>\n";
         }
 
         //把拼好的文字广播给所有客户端
@@ -142,12 +145,12 @@ public class ScoreManager : NetworkBehaviour
                 //获胜方看到的
                 if (winnerId == NetworkManager.Singleton.LocalClientId)
                 {
-                    winnerText.text = "Chicken Dinner! \n";
+                    winnerText.text = "          Chicken Dinner! \n";
                     winnerText.color = Color.yellow; 
                 }
                 else//没获胜方看到的
                 {
-                    winnerText.text = $"GameOver!{winnerId} Won";
+                    winnerText.text = $"          GameOver!{winnerId} Won";
                     winnerText.color = Color.red;
                 }
             }

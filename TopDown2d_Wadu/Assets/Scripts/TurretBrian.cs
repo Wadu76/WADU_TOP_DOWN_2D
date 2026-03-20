@@ -25,6 +25,8 @@ public class TurretBrian : NetworkBehaviour
     private Transform currentTarget;
     private float nextFireTime;
 
+    
+
   
 
     // Update is called once per frame
@@ -32,7 +34,8 @@ public class TurretBrian : NetworkBehaviour
     {
         //不是服务器就不弄
         if (!IsServer) return;
-
+        //死了不能开枪
+        //if (GetComponent<Health>().isDead.Value) return;
         //游戏结束就不开火了
         if ((ScoreManager.Instance != null && ScoreManager.Instance.Isgameover)) return;
 
@@ -161,6 +164,7 @@ public class TurretBrian : NetworkBehaviour
         {
             bv.isLogicBullet = isLogic;
             bv.shooterId = 999;
+            //bv.victimId = 999;
         }
     }
 }
